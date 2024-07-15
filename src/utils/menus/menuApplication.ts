@@ -1,21 +1,25 @@
-import { app, Menu, type MenuItemConstructorOptions } from "electron";
+import { app, Menu, shell, type MenuItemConstructorOptions } from "electron";
 import { c } from "ttag";
 import { uninstallProton } from "../../macos/uninstall";
-import { clearStorage, isMac, isWindows } from "../helpers";
+import { clearStorage, isMac } from "../helpers";
 import { getMainWindow, getSpellCheckStatus, toggleSpellCheck } from "../view/viewManagement";
 import { areDevToolsAvailable } from "../view/windowHelpers";
-import { openLogFolder } from "./openLogFolder";
+
+type MenuKey = "app" | "file" | "edit" | "view" | "window";
+interface MenuProps extends MenuItemConstructorOptions {
+    key: MenuKey;
+}
 
 interface MenuInsertProps {
-    menu: MenuItemConstructorOptions[];
-    key: MenuItemConstructorOptions["label"];
+    menu: MenuProps[];
+    key: MenuKey;
     otherOsEntries?: MenuItemConstructorOptions[];
     macEntries?: MenuItemConstructorOptions[];
     allOSEntries?: MenuItemConstructorOptions[];
 }
 
 const insertInMenu = ({ menu, key, otherOsEntries, macEntries, allOSEntries }: MenuInsertProps) => {
-    const editIndex = menu.findIndex((item) => item.label === key);
+    const editIndex = menu.findIndex((item) => item.key === key);
     if (!editIndex) return;
 
     const submenu = menu[editIndex].submenu as MenuItemConstructorOptions[];
@@ -28,15 +32,11 @@ const insertInMenu = ({ menu, key, otherOsEntries, macEntries, allOSEntries }: M
     menu[editIndex].submenu = [...submenu, ...(allOSEntries ?? [])];
 };
 
-export const setApplicationMenu = (isPackaged: boolean) => {
-    if (isWindows) {
-        Menu.setApplicationMenu(null);
-        return;
-    }
-
-    const temp: MenuItemConstructorOptions[] = [
+export const setApplicationMenu = () => {
+    const temp: MenuProps[] = [
         {
-            label: c("App menu").t`File`,
+            label: c("Menu").t`File`,
+            key: "file",
             submenu: [
                 {
                     label: c("App menu").t`Clear application data`,
@@ -46,7 +46,7 @@ export const setApplicationMenu = (isPackaged: boolean) => {
                 {
                     label: c("App menu").t`Show logs`,
                     type: "normal",
-                    click: () => openLogFolder(),
+                    click: () => shell.openPath(app.getPath("logs")),
                 },
                 {
                     role: "quit",
@@ -54,7 +54,8 @@ export const setApplicationMenu = (isPackaged: boolean) => {
             ],
         },
         {
-            label: c("App menu").t`Edit`,
+            label: c("Menu").t`Edit`,
+            key: "edit",
             submenu: [
                 { role: "undo" },
                 { role: "redo" },
@@ -75,7 +76,8 @@ export const setApplicationMenu = (isPackaged: boolean) => {
             ],
         },
         {
-            label: c("App menu").t`View`,
+            label: c("Menu").t`View`,
+            key: "view",
             submenu: [
                 {
                     label: c("App menu").t`Reload`,
@@ -116,7 +118,8 @@ export const setApplicationMenu = (isPackaged: boolean) => {
             ],
         },
         {
-            label: c("App menu").t`Window`,
+            label: c("Menu").t`Window`,
+            key: "window",
             submenu: [{ role: "minimize" }, { role: "close" }, { role: "zoom" }],
         },
     ];
@@ -124,6 +127,7 @@ export const setApplicationMenu = (isPackaged: boolean) => {
     if (isMac) {
         temp.unshift({
             label: app.name,
+            key: "app",
             submenu: [
                 { role: "about" },
                 { type: "separator" },
@@ -151,7 +155,7 @@ export const setApplicationMenu = (isPackaged: boolean) => {
             ],
         });
 
-        if (!isPackaged) {
+        if (!app.isPackaged) {
             const submenu = temp[0].submenu as MenuItemConstructorOptions[];
             temp[0].submenu = [...submenu, { type: "separator" }, { role: "services" }];
         }
@@ -159,7 +163,7 @@ export const setApplicationMenu = (isPackaged: boolean) => {
 
     insertInMenu({
         menu: temp,
-        key: "Edit",
+        key: "edit",
         otherOsEntries: [{ role: "delete" }, { type: "separator" }, { role: "selectAll" }],
         macEntries: [
             { role: "pasteAndMatchStyle" },
@@ -176,7 +180,7 @@ export const setApplicationMenu = (isPackaged: boolean) => {
     if (areDevToolsAvailable()) {
         insertInMenu({
             menu: temp,
-            key: "View",
+            key: "view",
             allOSEntries: [
                 { type: "separator" },
                 {

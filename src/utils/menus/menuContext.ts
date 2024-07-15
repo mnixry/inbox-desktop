@@ -52,11 +52,19 @@ const getContextEditFlags = (props: ContextMenuParams) => {
     if (props.editFlags.canCut) {
         template.push({ role: "cut" });
     }
+
     if (props.editFlags.canCopy) {
         template.push({ role: "copy" });
     }
 
-    if (props.editFlags.canCopy && props.linkURL) {
+    if (props.linkURL) {
+        if (!props.editFlags.canCopy && props.linkText) {
+            template.push({
+                label: c("Context Menu").t`Copy`,
+                click: () => clipboard.writeText(props.linkText),
+            });
+        }
+
         template.push({
             label: c("Context menu").t`Copy link`,
             click: () => clipboard.writeText(props.linkURL),
@@ -95,10 +103,6 @@ const getContextMenu = (props: ContextMenuParams, entriesBefore: boolean) => {
         template.push({
             label: c("Conext menu").t`Save image as…`,
             click: () => getMainWindow()?.webContents.downloadURL(props.srcURL),
-        });
-        template.push({
-            label: c("Context menu").t`Copy image`,
-            click: () => getMainWindow()?.webContents.copyImageAt(props.x, props.y),
         });
         template.push({ type: "separator" });
     }

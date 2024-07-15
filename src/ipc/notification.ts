@@ -1,12 +1,12 @@
 import { Notification, app } from "electron";
-import Logger from "electron-log";
 import { isWindows } from "../utils/helpers";
 import { addHashToCurrentURL } from "../utils/urls/urlHelpers";
-import { getMailView, getMainWindow, updateView } from "../utils/view/viewManagement";
+import { getMailView, getMainWindow, showView } from "../utils/view/viewManagement";
 import { ElectronNotification } from "./ipcConstants";
+import { ipcLogger } from "../utils/log";
 
 export const handleIPCBadge = (count: number) => {
-    Logger.info("handleIPCBadge, update badge value", count);
+    ipcLogger.info("Update badge value", count);
     if (isWindows) {
         return;
     }
@@ -19,6 +19,7 @@ export const handleIPCBadge = (count: number) => {
 };
 
 export const resetBadge = () => {
+    ipcLogger.info("Reset badge value");
     app.setBadgeCount(0);
 };
 
@@ -28,9 +29,16 @@ export const showNotification = (payload: ElectronNotification) => {
 
     notification.on("click", () => {
         const mainWindow = getMainWindow();
-        updateView(app);
+
         if (labelID && elementID && app === "mail") {
-            addHashToCurrentURL(getMailView(), `#elementID=${elementID}&labelID=${labelID}`);
+            const url = addHashToCurrentURL(
+                getMailView().webContents.getURL(),
+                `#elementID=${elementID}&labelID=${labelID}`,
+            );
+
+            showView("mail", url);
+        } else {
+            showView(app);
         }
 
         if (mainWindow) {

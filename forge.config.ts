@@ -1,4 +1,5 @@
-require("dotenv").config();
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require("dotenv").config({ path: ['.env', '.env.default'] });
 
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
@@ -9,6 +10,7 @@ import { getAppTransportSecuity, getExtraResource, getIco, getIcon, getName, isB
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { mainConfig } from "./webpack.main.config";
 import { rendererConfig } from "./webpack.renderer.config";
+import pkg from "./package.json";
 
 let currentArch = "";
 const config: ForgeConfig = {
@@ -27,6 +29,8 @@ const config: ForgeConfig = {
         name: getName(),
         executableName: getName(),
         extraResource: getExtraResource(),
+        appVersion: pkg.version,
+        appCopyright: pkg.config.copyright,
         // Required for macOS mailto protocol
         protocols: [
             {
@@ -36,7 +40,7 @@ const config: ForgeConfig = {
         ],
         // Change category type of the application on macOS
         appCategoryType: "public.app-category.productivity",
-        appBundleId: "ch.protonmail.desktop",
+        appBundleId: pkg.config.appBundleId,
         osxSign: {},
         osxNotarize: {
             appleId: process.env.APPLE_ID!,
@@ -56,7 +60,7 @@ const config: ForgeConfig = {
                 iconUrl: `${__dirname}/assets/icons/${getIco()}`,
                 setupIcon: `${__dirname}/assets/icons/${getIco()}`,
                 loadingGif: `${__dirname}/assets/windows/install-spinner.gif`,
-                signWithParams: `/a /d "Proton Mail Desktop" /t "http://timestamp.sectigo.com" /fd SHA256`,
+                signWithParams: process.env.WINDOWS_PACKAGE_SIGNING === 'yes' ? `/a /d "Proton Mail Desktop" /t "http://timestamp.sectigo.com" /fd SHA256` : undefined,
             },
         },
         {
@@ -91,8 +95,8 @@ const config: ForgeConfig = {
                 options: {
                     bin: getName(),
                     icon: `${__dirname}/assets/linux/${getIcon()}.svg`,
-                    homepage: "https://proton.me/",
-                    categories: ["Utility"],
+                    homepage: pkg.author.url,
+                    categories: ["Network", "Email"],
                     mimeType: ["x-scheme-handler/mailto"],
                 },
             },
@@ -103,9 +107,9 @@ const config: ForgeConfig = {
                 options: {
                     bin: getName(),
                     icon: `${__dirname}/assets/linux/${getIcon()}.svg`,
-                    maintainer: "Proton",
-                    homepage: "https://proton.me/",
-                    categories: ["Utility"],
+                    maintainer: pkg.author.name,
+                    homepage: pkg.author.url,
+                    categories: ["Network", "Email"],
                     mimeType: ["x-scheme-handler/mailto"],
                 },
             },
@@ -122,8 +126,8 @@ const config: ForgeConfig = {
             config: {
                 prerelase: isBetaRelease,
                 repository: {
-                    owner: "ProtonMail",
-                    name: "inbox-desktop",
+                    owner: pkg.config.githubUser,
+                    name: pkg.config.githubRepo,
                 },
             },
         },
@@ -158,6 +162,8 @@ const config: ForgeConfig = {
             [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
             // Enforces that Electron will only load your app from "app.asar" instead of its normal search paths
             [FuseV1Options.OnlyLoadAppFromAsar]: true,
+            // Encrypt cookies to avoid session hijacking
+            [FuseV1Options.EnableCookieEncryption]: true,
         }),
     ],
 };

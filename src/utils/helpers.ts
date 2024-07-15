@@ -1,25 +1,36 @@
 import { app } from "electron";
-import Logger from "electron-log";
 import { getCalendarView, getMailView } from "./view/viewManagement";
+import { clearLogs, mainLogger } from "./log";
+
+// TODO import { DESKTOP_PLATFORMS } from '@proton/shared/lib/constants';
+export enum DESKTOP_PLATFORMS {
+    LINUX = "linux",
+    MACOS = "macos",
+    WINDOWS = "windows",
+}
 
 export const isMac = process.platform === "darwin";
 export const isWindows = process.platform === "win32";
 export const isLinux = process.platform === "linux";
 
-export const getPlatform = () => {
+export const getPlatform = (): DESKTOP_PLATFORMS => {
     if (isMac) {
-        return "macos";
+        return DESKTOP_PLATFORMS.MACOS;
     } else if (isWindows) {
-        return "windows";
+        return DESKTOP_PLATFORMS.WINDOWS;
     } else if (isLinux) {
-        return "linux";
+        return DESKTOP_PLATFORMS.LINUX;
     }
+
+    throw new Error(`Platform "${process.platform}" not supported.`);
 };
 
 export const restartApp = (timeout = 300) => {
-    Logger.info("Restarting app in", timeout, "ms");
+    mainLogger.info("Restarting app in", timeout, "ms");
     setTimeout(() => {
-        app.relaunch();
+        // Since the app can crash under some circunstances when being restarted
+        // We are just keeping it closed after clearing data.
+        // app.relaunch();
         app.exit();
     }, timeout);
 };
@@ -42,8 +53,7 @@ export const clearStorage = (restart: boolean, timeout?: number) => {
         clear(calendaView);
     }
 
-    // Clear logs
-    Logger.transports.file.getFile().clear();
+    clearLogs();
 
     if (restart) {
         restartApp(timeout);
@@ -77,4 +87,16 @@ export const smartTruncateText = (text: string, maxLength: number) => {
     }
 
     return `${truncated}...`;
+};
+
+// TODO  @proton/pass/utils/string/semver
+type SemVer = number;
+const BASE = "000";
+export const semver = (version: string): SemVer => {
+    const [major = BASE, minor = BASE, patch = BASE, build = BASE] = version.split(/[.-]/).map((part) => {
+        const value = parseInt(part.slice(0, BASE.length + 1), 10);
+        return (isNaN(value) || value <= 0 ? 0 : value).toString().padStart(BASE.length, "0");
+    });
+
+    return parseInt(major + minor + patch + build, 10);
 };
